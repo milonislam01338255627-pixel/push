@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="bn"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b6b5c">
+<title>গাইড — MPNS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@500;700;800&family=Hind+Siliguri:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head><body>
+<div id="nav"></div>
+<main class="wrap doc" style="max-width:820px">
+<section class="ph" style="padding-left:0"><h1>সেটআপ গাইড</h1><p>অ্যাকাউন্ট খোলা থেকে প্রথম নোটিফিকেশন পর্যন্ত।</p>
+<p style="margin-top:16px"><button class="btn" id="vd">▶️ ভিডিও গাইড দেখুন</button></p></section>
+
+<h2>১. অ্যাপ তৈরি করুন</h2>
+<p>ড্যাশবোর্ডে গিয়ে "নতুন অ্যাপ" এ আপনার ওয়েবসাইটের নাম দিন। একটা App ID আর একটা গোপন API Key পাবেন।</p>
+
+<h2>২. ওয়েবসাইটে কোড বসান</h2>
+<p>পেজের HTML-এ এই দুই লাইন বসান (আপনার App ID দিয়ে):</p>
+<div class="cw"><pre class="code" id="g1"></pre><button class="copy" data-copy="g1">কপি</button></div>
+<p>তারপর ওয়েবসাইটের রুটে <b>pushsaas-sw.js</b> নামে একটা ফাইল বানান, ভেতরে এই এক লাইন:</p>
+<div class="cw"><pre class="code" id="g2"></pre><button class="copy" data-copy="g2">কপি</button></div>
+<div class="note">ওয়েবসাইট সাবফোল্ডারে থাকলে (যেমন github.io/নাম/) স্ক্রিপ্ট ট্যাগে <b>data-sw="pushsaas-sw.js"</b> যোগ করুন।</div>
+
+<h2>৩. নোটিফিকেশন পাঠান</h2>
+<p>ড্যাশবোর্ডে টাইটেল ও মেসেজ লিখে "পাঠান" চাপুন। ছবি আর লিংক চাইলে ঐচ্ছিক ঘরে দিন।</p>
+<ul><li><b>ছবি:</b> ছবির সরাসরি URL (https://...jpg বা png) দিন।</li><li><b>লিংক:</b> না দিলে ভিজিটরের ট্যাপে আপনার ওয়েবসাইটই খুলবে।</li></ul>
+
+<h2>API দিয়ে পাঠানো</h2>
+<div class="cw"><pre class="code" id="g3"></pre><button class="copy" data-copy="g3">কপি</button></div>
+<table class="t"><tr><th>ফিল্ড</th><th>বিবরণ</th></tr>
+<tr><td>title</td><td>আবশ্যক। সর্বোচ্চ ১০০ অক্ষর।</td></tr>
+<tr><td>body</td><td>আবশ্যক। সর্বোচ্চ ৩০০ অক্ষর।</td></tr>
+<tr><td>url</td><td>ঐচ্ছিক। ক্লিকে যে লিংকে যাবে।</td></tr>
+<tr><td>image</td><td>ঐচ্ছিক। বড় ছবির URL।</td></tr>
+<tr><td>icon</td><td>ঐচ্ছিক। ছোট আইকনের URL।</td></tr></table>
+<p>সফল হলে উত্তর: <code>{"sent": 10, "failed": 0}</code></p>
+<div class="note"><b>সাবধান:</b> API Key শুধু নিজের সার্ভারে রাখুন। ওয়েবসাইটের ফ্রন্টএন্ড কোডে বসাবেন না।</div>
+<table class="t"><tr><th>এরর</th><th>মানে</th></tr>
+<tr><td>401</td><td>API Key ভুল</td></tr><tr><td>402</td><td>প্ল্যানের মেয়াদ বা মাসিক লিমিট শেষ</td></tr><tr><td>400</td><td>title বা body নেই</td></tr></table>
+
+<h2>কাজ না করলে</h2>
+<ul><li>ওয়েবসাইট HTTPS-এ আছে কিনা দেখুন।</li><li><b>pushsaas-sw.js</b> ফাইল রুটে আছে কিনা দেখুন। ঠিকানা/pushsaas-sw.js খুললে এক লাইনের কোড দেখা যাওয়া উচিত।</li><li>Chrome-এ সাইটের নোটিফিকেশন অনুমতি "Block" করা থাকলে সেটা "Allow" করুন।</li><li>iPhone-এ সাইটটা হোম স্ক্রিনে যোগ করে খুলুন।</li><li>ড্যাশবোর্ডে প্ল্যানের মেয়াদ আছে কিনা দেখুন।</li></ul>
+</main>
+<div id="foot"></div><script src="/common.js"></script>
+<script>pubNav();pubFoot();
+var O=location.origin;
+$("g1").textContent='<script src="'+O+'/sdk.js" data-app-id="আপনার-App-ID"><\/script>\n<button onclick="PushSaaS.subscribe()">নোটিফিকেশন চালু করুন</button>';
+$("g2").textContent='importScripts("'+O+'/sw-core.js");';
+$("g3").textContent='curl -X POST '+O+'/v1/send \\\n  -H "Authorization: Bearer sk_আপনার_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d \'{"title":"অফার!","body":"আজ ২০% ছাড়","url":"https://site.com","image":"https://site.com/a.jpg"}\'';
+CFG_P.then(function(c){$("vd").onclick=function(){c.video?window.open(c.video,"_blank"):toast("ভিডিও গাইড শীঘ্রই আসছে")}});
+</script></body></html>
