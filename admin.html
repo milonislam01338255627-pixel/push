@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="bn"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MPNS অ্যাডমিন</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:640px;margin:0 auto;padding:14px;background:#f3f4f8;color:#1f2330}
+.c{background:#fff;border-radius:14px;padding:14px;margin:10px 0;box-shadow:0 2px 8px #0000000d}
+input,button{font:inherit;font-size:16px;padding:10px;border-radius:10px;border:1px solid #ddd;width:100%;box-sizing:border-box;margin:4px 0}
+button{background:#4f46e5;color:#fff;border:0}button.g{background:#059669}button.r{background:#dc2626}
+.row{display:flex;gap:8px}.row>*{flex:1}.m{color:#6b7280;font-size:13px;word-break:break-all}
+</style></head><body>
+<h2>🛠 MPNS অ্যাডমিন</h2>
+<div class="c"><input id="k" type="password" placeholder="ADMIN_KEY"><button onclick="go()">ঢুকুন</button><div id="e" class="m" style="color:#dc2626"></div></div>
+<div id="out"></div>
+<script>
+var K=sessionStorage.getItem("k")||"";
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+async function api(p,m,b){var r=await fetch(p,{method:m||"GET",headers:{"Content-Type":"application/json","x-admin-key":K},body:b?JSON.stringify(b):undefined});var j=await r.json();if(!r.ok)throw new Error(j.error||"সমস্যা");return j}
+async function go(){K=document.getElementById("k").value||K;try{await load();sessionStorage.setItem("k",K);document.getElementById("e").textContent=""}catch(e){document.getElementById("e").textContent=e.message}}
+async function act(id,w){if(!confirm(w==="approve"?"অনুমোদন করবেন? (আগে নগদে টাকা এসেছে কিনা দেখুন)":"বাতিল করবেন?"))return;try{await api("/admin/payments/"+id+"/"+w,"POST");load()}catch(e){alert(e.message)}}
+async function grant(id){var d=prompt("কত দিন যোগ করবেন?","7");if(!d)return;try{await api("/admin/customers/"+id+"/grant","POST",{days:d});load()}catch(e){alert(e.message)}}
+async function load(){
+  var p=await api("/admin/payments"),c=await api("/admin/customers"),h="<h3>💰 পেমেন্ট</h3>";
+  h+=p.map(function(x){return '<div class="c"><b>'+esc(x.email)+'</b><div class="m">প্ল্যান: '+esc(x.plan_id)+' • ৳'+x.amount+'<br>নগদ নম্বর: '+esc(x.sender)+'<br>TrxID: <b>'+esc(x.trx_id)+'</b><br>'+new Date(x.created_at).toLocaleString("bn-BD")+' • '+esc(x.status)+'</div>'
+    +(x.status==="pending"?'<div class="row"><button class="g" onclick="act('+x.id+',\'approve\')">✅ অনুমোদন</button><button class="r" onclick="act('+x.id+',\'reject\')">❌ বাতিল</button></div>':"")+'</div>'}).join("")||'<div class="m">কোনো পেমেন্ট নেই</div>';
+  h+="<h3>👥 গ্রাহক ("+c.length+")</h3>"+c.map(function(x){return '<div class="c"><b>'+esc(x.email)+'</b><div class="m">প্ল্যান: '+esc(x.plan)+' • মেয়াদ: '+(x.plan_expires_at?new Date(x.plan_expires_at).toLocaleString("bn-BD"):"—")+'<br>ডিভাইস: '+x.devices+' • এই মাসে পাঠানো: '+x.sent_count+'</div><button onclick="grant('+x.id+')">➕ দিন যোগ করুন</button></div>'}).join("");
+  document.getElementById("out").innerHTML=h;
+}
+if(K)go();
+</script></body></html>

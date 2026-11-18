@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="bn"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#4f46e5">
+<title>MPNS</title>
+<style>
+:root{--p:#4f46e5;--bg:#f3f4f8;--c:#fff;--t:#1f2330;--m:#6b7280;--b:#e5e7eb;--g:#059669;--r:#dc2626}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--t)}
+.top{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;padding:18px 16px 56px}
+.top h1{margin:0;font-size:22px}.top small{opacity:.85}
+.wrap{max-width:640px;margin:-40px auto 40px;padding:0 14px}
+.card{background:var(--c);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px #0000000d}
+input,textarea{width:100%;font:inherit;font-size:16px;padding:11px 12px;margin:5px 0;border:1px solid var(--b);border-radius:10px;background:#fff}
+button{font:inherit;font-size:16px;padding:11px 14px;border:0;border-radius:10px;background:var(--p);color:#fff;cursor:pointer;width:100%;margin:5px 0}
+button.s{background:#eef0ff;color:var(--p)} button.d{background:#fee2e2;color:var(--r)} button.g{background:var(--g)}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.m{color:var(--m);font-size:13px}
+.bar{height:8px;background:var(--b);border-radius:8px;overflow:hidden;margin:8px 0}
+.bar>i{display:block;height:100%;background:var(--p)}
+.stats{display:flex;gap:8px;margin-top:8px}.stats>div{flex:1;background:var(--bg);border-radius:12px;padding:10px;text-align:center}
+.stats b{display:block;font-size:20px}
+pre{background:#14161f;color:#a7f3d0;padding:10px;border-radius:10px;overflow-x:auto;font-size:12px;white-space:pre-wrap;word-break:break-all;margin:6px 0}
+details{margin:8px 0}summary{cursor:pointer;font-weight:600;padding:6px 0}
+.pv{background:#fff;border:1px solid var(--b);border-radius:12px;padding:10px;margin:8px 0;box-shadow:0 2px 6px #0001}
+.pv .h{display:flex;gap:10px;align-items:center}.pv img.i{width:40px;height:40px;border-radius:8px;background:var(--b);object-fit:cover}
+.pv img.big{width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-top:8px}
+.hist{border-top:1px solid var(--b);padding:10px 0;font-size:14px}
+.tag{display:inline-block;background:var(--bg);border-radius:20px;padding:2px 9px;font-size:12px;margin:3px 3px 0 0}
+input[type=radio]{width:auto;margin:0 10px 0 0}
+.plan{display:flex;align-items:center;border:1px solid var(--b);border-radius:12px;padding:10px;margin:6px 0}
+.st{padding:10px;border-radius:12px;margin:8px 0;font-weight:600}
+.ok{background:#d1fae5;color:#065f46}.bad{background:#fee2e2;color:#991b1b}
+ol{padding-left:20px;margin:6px 0}
+</style></head><body>
+<div class="top"><h1>🔔 M.P.N.S</h1><small>মিলন পুশ নোটিফিকেশন সার্ভার</small></div>
+<div class="wrap">
+<div id="auth" class="card">
+  <input id="email" type="email" placeholder="ইমেইল">
+  <input id="pass" type="password" placeholder="পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)">
+  <button onclick="login('login')">লগইন</button>
+  <button class="g" onclick="login('signup')">নতুন অ্যাকাউন্ট</button>
+  <div id="err" class="m" style="color:var(--r)"></div>
+</div>
+<div id="main" style="display:none">
+  <div class="card">
+    <div class="row" style="align-items:center"><b id="me" style="flex:3;word-break:break-all"></b>
+      <button class="s" style="flex:1" onclick="logout()">বের হন</button></div>
+    <div id="st" class="st"></div>
+    <div class="m" id="usage"></div><div class="bar"><i id="pb" style="width:0"></i></div>
+    <div class="row"><button class="g" onclick="togglePlans()">💳 প্ল্যান নিন</button>
+      <button class="s" onclick="video()">▶️ ভিডিও গাইড</button></div>
+  </div>
+  <div class="card" id="plans" style="display:none"></div>
+  <div class="card"><b>🚀 কীভাবে কানেক্ট করবেন</b>
+    <ol class="m"><li>নিচে "নতুন অ্যাপ" বানান</li><li>অ্যাপ কার্ডের "ওয়েবসাইটে বসানোর কোড" খুলে ২টা কোড বসান</li><li>ভিজিটর "নোটিফিকেশন চালু করুন" চাপলে ডিভাইস যোগ হবে</li><li>এখান থেকেই নোটিফিকেশন পাঠান</li></ol></div>
+  <div class="card"><b>➕ নতুন অ্যাপ</b>
+    <input id="appname" placeholder="অ্যাপ/ওয়েবসাইটের নাম">
+    <button onclick="createApp()">তৈরি করুন</button></div>
+  <div id="apps"></div>
+</div>
+</div>
+<script>
+var T = localStorage.getItem("t"), APPS = {}, CFG = {plans:[]};
+var $ = function(i){return document.getElementById(i)};
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+async function api(p,m,b){
+  var r=await fetch(p,{method:m||"GET",headers:{"Content-Type":"application/json",Authorization:"Bearer "+T},body:b?JSON.stringify(b):undefined});
+  var j=await r.json(); if(!r.ok) throw new Error(j.error||"সমস্যা"); return j;
+}
+async function login(kind){
+  try{
+    var r=await fetch("/api/"+kind,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:$("email").value,password:$("pass").value})});
+    var j=await r.json(); if(!r.ok) throw new Error(j.error);
+    T=j.token; localStorage.setItem("t",T); load();
+  }catch(e){$("err").textContent=e.message}
+}
+async function loadCfg(){try{CFG=await (await fetch("/api/config")).json()}catch(e){}}
+function video(){CFG.video?window.open(CFG.video,"_blank"):alert("ভিডিও গাইড শীঘ্রই আসছে")}
+function left(ms){var d=Math.floor(ms/864e5),h=Math.floor(ms%864e5/36e5);return d+" দিন "+h+" ঘণ্টা"}
+function renderStatus(me){
+  var ms=me.expires?new Date(me.expires)-Date.now():0, el=$("st");
+  if(ms>0){el.className="st ok";el.textContent="✅ "+me.planName+" চালু — আর "+left(ms)+" বাকি"}
+  else{el.className="st bad";el.textContent="⛔ "+me.planName+"-এর মেয়াদ শেষ। নোটিফিকেশন পাঠাতে প্ল্যান নিন";$("plans").style.display="block";renderPlans()}
+}
+function togglePlans(){var p=$("plans");if(p.style.display==="block"){p.style.display="none"}else{p.style.display="block";renderPlans()}}
+var SL={pending:"⏳ ভেরিফাইয়ের অপেক্ষায়",approved:"✅ অনুমোদিত",rejected:"❌ বাতিল"};
+async function renderPlans(){
+  $("plans").innerHTML='<b>💳 প্ল্যান বেছে নিন</b>'+CFG.plans.map(function(p){
+    return '<label class="plan"><input type="radio" name="pl" value="'+esc(p.id)+'"><span><b>'+esc(p.name)+'</b> — ৳'+p.price+'<br><span class="m">মাসে '+p.limit+' নোটিফিকেশন</span></span></label>'}).join("")
+   +'<div class="pv"><b>পেমেন্ট করবেন যেভাবে:</b><ol class="m"><li>প্ল্যান বেছে নিন</li><li>নগদ অ্যাপ থেকে <b>'+esc(CFG.nagad||"(নম্বর সেট হয়নি)")+'</b> নম্বরে প্ল্যানের টাকা পাঠান (Send Money)</li><li>নিচে আপনার নগদ নম্বর ও TrxID লিখে জমা দিন</li><li>যাচাই হলেই প্ল্যান চালু হবে</li></ol></div>'
+   +'<input id="snd" inputmode="numeric" placeholder="আপনার নগদ নম্বর (01XXXXXXXXX)"><input id="trx" placeholder="Transaction ID (TrxID)">'
+   +'<button onclick="pay()">✅ পেমেন্ট জমা দিন</button><div id="ph"></div>';
+  try{var h=await api("/api/payments");$("ph").innerHTML=h.length?'<b>আপনার পেমেন্ট</b>'+h.map(function(p){return '<div class="hist">৳'+p.amount+' • '+esc(p.trx_id)+'<br><span class="tag">'+(SL[p.status]||p.status)+'</span></div>'}).join(""):""}catch(e){}
+}
+async function pay(){
+  var r=document.querySelector('input[name=pl]:checked');
+  if(!r) return alert("আগে প্ল্যান বেছে নিন");
+  try{await api("/api/payments","POST",{plan_id:r.value,sender:$("snd").value.trim(),trx_id:$("trx").value.trim()});
+    alert("✅ জমা হয়েছে। যাচাই হলে প্ল্যান চালু হবে।");renderPlans()}catch(e){alert("❌ "+e.message)}
+}
+function logout(){localStorage.removeItem("t");location.reload()}
+async function createApp(){
+  try{await api("/api/apps","POST",{name:$("appname").value});$("appname").value="";load()}catch(e){alert(e.message)}
+}
+async function delApp(id){
+  if(!confirm("এই অ্যাপ ও এর সব ডিভাইস মুছে যাবে। নিশ্চিত?")) return;
+  await api("/api/apps/"+id,"DELETE"); load();
+}
+function copy(id){
+  var t=$(id).textContent;
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){alert("কপি হয়েছে ✅")}).catch(function(){alert("হাতে সিলেক্ট করে কপি করুন")});
+}
+function preview(id){
+  var t=$("t"+id).value||"টাইটেল", b=$("b"+id).value||"মেসেজ", im=$("im"+id).value.trim(), ic=$("ic"+id).value.trim();
+  $("pv"+id).innerHTML='<div class="h"><img class="i" src="'+esc(ic)+'" onerror="this.style.visibility=\'hidden\'"><div><b>'+esc(t)+'</b><div class="m">'+esc(b)+'</div></div></div>'
+    +(im?'<img class="big" src="'+esc(im)+'" onerror="this.style.display=\'none\'">':"");
+}
+async function send(id){
+  var a=APPS[id], body={title:$("t"+id).value.trim(),body:$("b"+id).value.trim(),url:$("u"+id).value.trim(),image:$("im"+id).value.trim(),icon:$("ic"+id).value.trim()};
+  if(!body.title||!body.body) return alert("টাইটেল ও মেসেজ দিন");
+  var btn=$("sb"+id); btn.disabled=true; btn.textContent="পাঠানো হচ্ছে...";
+  try{
+    var r=await fetch("/v1/send",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+a.api_key},body:JSON.stringify(body)});
+    var j=await r.json(); alert(r.ok?("✅ পাঠানো: "+j.sent+" | ব্যর্থ: "+j.failed):("❌ "+j.error));
+  }catch(e){alert("❌ "+e.message)}
+  load();
+}
+async function hist(id){
+  try{
+    var h=await api("/api/apps/"+id+"/history");
+    $("h"+id).innerHTML=h.length?h.map(function(n){
+      var rate=n.sent?Math.round(100*n.clicks/n.sent):0;
+      return '<div class="hist"><b>'+esc(n.title)+'</b><div class="m">'+esc(n.body)+'</div>'
+       +'<span class="tag">📤 '+n.sent+'</span><span class="tag">👆 '+n.clicks+' ক্লিক ('+rate+'%)</span>'
+       +(n.image?'<span class="tag">🖼 ছবি</span>':'')+(n.url?'<span class="tag">🔗 লিংক</span>':'')
+       +'<span class="tag">'+new Date(n.created_at).toLocaleString("bn-BD")+'</span></div>';
+    }).join(""):'<div class="m">এখনও কিছু পাঠানো হয়নি</div>';
+  }catch(e){}
+}
+async function load(){
+  if(!T) return;
+  try{
+    var me=await api("/api/me"), apps=await api("/api/apps"), h=location.origin;
+    $("auth").style.display="none"; $("main").style.display="block";
+    $("me").textContent=me.email;
+    $("usage").textContent="এই মাসে "+me.sent+" / "+me.limit+" নোটিফিকেশন";
+    renderStatus(me);
+    $("pb").style.width=Math.min(100,100*me.sent/me.limit)+"%";
+    APPS={}; apps.forEach(function(a){APPS[a.id]=a});
+    $("apps").innerHTML=apps.map(function(a){var i=a.id;
+      var sn='<script src="'+h+'/sdk.js" data-app-id="'+i+'"></scr'+'ipt>\n<button onclick="PushSaaS.subscribe()">নোটিফিকেশন চালু করুন</button>';
+      var sw='importScripts("'+h+'/sw-core.js");';
+      var api_='curl -X POST '+h+'/v1/send \\\n -H "Authorization: Bearer '+a.api_key+'" \\\n -H "Content-Type: application/json" \\\n -d \'{"title":"অফার!","body":"আজ ২০% ছাড়","url":"https://site.com","image":"https://site.com/a.jpg"}\'';
+      return '<div class="card"><div class="row" style="align-items:center"><b style="flex:3;font-size:18px">'+esc(a.name)+'</b>'
+       +'<span class="tag" style="flex:0 0 auto">📱 '+a.devices+' ডিভাইস</span></div>'
+       +'<b>✉️ নোটিফিকেশন পাঠান</b>'
+       +'<input id="t'+i+'" placeholder="টাইটেল" oninput="preview(\''+i+'\')">'
+       +'<textarea id="b'+i+'" rows="2" placeholder="মেসেজ" oninput="preview(\''+i+'\')"></textarea>'
+       +'<input id="u'+i+'" placeholder="🔗 ক্লিকের লিংক (ঐচ্ছিক) — না দিলে আপনার সাইটই খুলবে">'
+       +'<input id="im'+i+'" placeholder="🖼 বড় ছবির লিংক (ঐচ্ছিক)" oninput="preview(\''+i+'\')">'
+       +(CFG.imageHost?'<a class="m" href="'+esc(CFG.imageHost)+'" target="_blank">🖼 ছবির URL বানাতে এখানে ট্যাপ করুন ↗</a>':"")+'<input id="ic'+i+'" placeholder="🔷 ছোট আইকনের লিংক (ঐচ্ছিক)" oninput="preview(\''+i+'\')">'
+       +'<div class="m">প্রিভিউ:</div><div class="pv" id="pv'+i+'"></div>'
+       +'<button id="sb'+i+'" onclick="send(\''+i+'\')">🚀 পাঠান</button>'
+       +'<details><summary>📊 পাঠানোর ইতিহাস</summary><div id="h'+i+'">লোড হচ্ছে...</div></details>'
+       +'<details><summary>🧩 ওয়েবসাইটে বসানোর কোড</summary>'
+       +'<div class="m">১) সাইটের পেজে বসান:</div><pre id="c1'+i+'">'+esc(sn)+'</pre><button class="s" onclick="copy(\'c1'+i+'\')">কপি</button>'
+       +'<div class="m">২) সাইটের রুটে pushsaas-sw.js ফাইলে:</div><pre id="c2'+i+'">'+esc(sw)+'</pre><button class="s" onclick="copy(\'c2'+i+'\')">কপি</button></details>'
+       +'<details><summary>🔑 API (নিজের সার্ভার থেকে পাঠাতে)</summary><div class="m">API Key গোপন রাখুন:</div><pre id="c3'+i+'">'+esc(api_)+'</pre><button class="s" onclick="copy(\'c3'+i+'\')">কপি</button></details>'
+       +'<button class="d" onclick="delApp(\''+i+'\')">🗑 অ্যাপ মুছুন</button></div>';
+    }).join("");
+    apps.forEach(function(a){preview(a.id);hist(a.id)});
+  }catch(e){localStorage.removeItem("t");T=null}
+}
+loadCfg().then(load);
+</script></body></html>
