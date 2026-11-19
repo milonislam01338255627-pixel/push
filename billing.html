@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="bn"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b6b5c">
+<title>বিলিং — MPNS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@500;700;800&family=Hind+Siliguri:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head><body>
+<div id="top"></div>
+<main class="ap-main">
+  <h1>বিলিং ও প্ল্যান</h1>
+  <div id="st"></div>
+  <div class="card"><h3>প্ল্যান বেছে নিন</h3><div id="pl"></div></div>
+  <div class="card" id="pay">
+    <h3>নগদে পেমেন্ট</h3>
+    <ol class="steps" style="margin:14px 0">
+      <li><div><h3 style="font-size:17px">টাকা পাঠান</h3><p>নগদ অ্যাপ থেকে <b id="ng">...</b> নম্বরে প্ল্যানের টাকা Send Money করুন। <button class="btn ghost s" data-copy="ng" type="button">নম্বর কপি</button></p></div></li>
+      <li><div><h3 style="font-size:17px">তথ্য জমা দিন</h3><p>নিচে আপনার নগদ নম্বর ও Transaction ID (TrxID) লিখুন।</p></div></li>
+      <li><div><h3 style="font-size:17px">যাচাই ও চালু</h3><p>আমরা মিলিয়ে অনুমোদন দিলে প্ল্যান চালু হবে।</p></div></li>
+    </ol>
+    <div class="row2"><div class="fld"><label for="snd">আপনার নগদ নম্বর</label><input id="snd" inputmode="numeric" placeholder="01XXXXXXXXX" maxlength="11"></div>
+    <div class="fld"><label for="trx">TrxID</label><input id="trx" placeholder="যেমন: 7A9K2LM3" maxlength="20"></div></div>
+    <div id="sum" class="m" style="margin:10px 0"></div>
+    <button class="btn block" id="pb" onclick="pay()">পেমেন্ট জমা দিন</button>
+  </div>
+  <div class="card"><h3>আপনার পেমেন্ট</h3><div id="ph"><div class="empty">কোনো পেমেন্ট নেই</div></div></div>
+</main>
+<div id="bar"></div>
+<script src="/common.js"></script>
+<script>
+var CFG = {plans: []}, SEL = null;
+var SL = { pending: ['y', "যাচাইয়ের অপেক্ষায়"], approved: ['g', "অনুমোদিত"], rejected: ['r', "বাতিল"] };
+function left(ms) { var d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5); return bn(d) + " দিন " + bn(h) + " ঘণ্টা"; }
+function drawPlans() {
+  $("pl").innerHTML = CFG.plans.map(function (p) {
+    return '<label class="sel' + (SEL === p.id ? " on" : "") + '"><input type="radio" name="pl" value="' + esc(p.id) + '"' + (SEL === p.id ? " checked" : "") + '><span><b>' + esc(p.name) + '</b><br><span class="m sm">মাসে ' + bn(p.limit) + ' নোটিফিকেশন</span></span><span class="pc">৳' + bn(p.price) + '</span></label>';
+  }).join("");
+  document.querySelectorAll("input[name=pl]").forEach(function (r) { r.onchange = function () { SEL = r.value; drawPlans(); }; });
+  var p = CFG.plans.find(function (x) { return x.id === SEL; });
+  $("sum").textContent = p ? "পাঠাতে হবে: ৳" + bn(p.price) + " (" + p.name + ")" : "প্ল্যান বেছে নিন";
+}
+async function drawHist() {
+  try {
+    var h = await api("/api/payments");
+    $("ph").innerHTML = h.length ? h.map(function (p) {
+      var s = SL[p.status] || ['', p.status], pl = CFG.plans.find(function (x) { return x.id === p.plan_id; });
+      return '<div class="hist"><b>৳' + bn(p.amount) + '</b> ' + esc(pl ? pl.name : p.plan_id) + ' <span class="tag ' + s[0] + '">' + s[1] + '</span><div class="m sm">TrxID: ' + esc(p.trx_id) + ' • ' + new Date(p.created_at).toLocaleString("bn-BD") + '</div></div>';
+    }).join("") : '<div class="empty">কোনো পেমেন্ট নেই</div>';
+  } catch (e) {}
+}
+async function pay() {
+  if (!SEL) return toast("আগে প্ল্যান বেছে নিন", true);
+  var b = $("pb"); b.disabled = true;
+  try {
+    await api("/api/payments", "POST", { plan_id: SEL, sender: $("snd").value.trim(), trx_id: $("trx").value.trim() });
+    toast("✅ জমা হয়েছে। যাচাই হলে প্ল্যান চালু হবে।"); $("trx").value = ""; drawHist();
+  } catch (e) { toast(e.message, true); }
+  b.disabled = false;
+}
+async function init() {
+  CFG = await CFG_P; $("ng").textContent = CFG.nagad || "(নম্বর সেট হয়নি)";
+  SEL = new URLSearchParams(location.search).get("plan"); drawPlans(); drawHist();
+  try {
+    var me = await api("/api/me"), ms = me.expires ? new Date(me.expires) - Date.now() : 0, st = $("st");
+    if (ms > 0) { st.className = "stt ok"; st.textContent = "✅ " + me.planName + " চালু, আর " + left(ms) + " বাকি"; }
+    else { st.className = "stt bad"; st.textContent = "⛔ " + me.planName + "-এর মেয়াদ শেষ। নিচ থেকে প্ল্যান নিন।"; }
+  } catch (e) {}
+}
+if (appShell("bill")) init();
+</script></body></html>
